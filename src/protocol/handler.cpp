@@ -24,9 +24,9 @@ class Handler::Impl : driver::Driver<Impl> {
 
 public:
     explicit Impl(
-        uint16_t usb_vid, int32_t usb_pid, size_t buffer_transfer_count, size_t storage_unit_count,
-        int (*index_to_storage_id)(uint16_t, uint8_t))
-        : Driver(usb_vid, usb_pid)
+        uint16_t usb_vid, int32_t usb_pid, const char* serial_number, size_t buffer_transfer_count,
+        size_t storage_unit_count, int (*index_to_storage_id)(uint16_t, uint8_t))
+        : Driver(usb_vid, usb_pid, serial_number)
         , default_transmit_buffer_(*this, buffer_transfer_count)
         , tick_thread_transmit_buffer_(*this, buffer_transfer_count)
         , event_thread_([this]() { handle_events(); })
@@ -490,12 +490,16 @@ private:
 };
 
 API Handler::Handler(
-    uint16_t usb_vid, int32_t usb_pid, size_t buffer_transfer_count, size_t storage_unit_count,
-    int (*index_to_storage_id)(uint16_t, uint8_t)) {
+    uint16_t usb_vid, int32_t usb_pid, const char* serial_number, size_t buffer_transfer_count,
+    size_t storage_unit_count, int (*index_to_storage_id)(uint16_t, uint8_t)) {
     static_assert(impl_align == alignof(Handler::Impl));
     static_assert(sizeof(impl_) == sizeof(Handler::Impl));
-    new (impl_)
-        Impl{usb_vid, usb_pid, buffer_transfer_count, storage_unit_count, index_to_storage_id};
+    new (impl_) Impl{usb_vid,
+                     usb_pid,
+                     serial_number,
+                     buffer_transfer_count,
+                     storage_unit_count,
+                     index_to_storage_id};
 }
 
 API Handler::~Handler() { std::destroy_at(reinterpret_cast<Impl*>(impl_)); }
