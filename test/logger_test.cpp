@@ -5,11 +5,9 @@
 #include <spdlog/sinks/ostream_sink.h>
 #include <spdlog/spdlog.h>
 #include <sstream>
-#include <thread>
-#include <vector>
 
-// 直接包含logger.cpp实现文件
-#include "../src/utility/logger.cpp"
+
+#include <wujihandcpp/utility/logger.hpp>
 
 namespace wujihandcpp::utility {
 

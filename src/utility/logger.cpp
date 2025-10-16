@@ -1,25 +1,26 @@
 #include <wujihandcpp/utility/logger.hpp>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/rotating_file_sink.h>
+#include "cross_os.hpp"
 
 namespace wujihandcpp {
 namespace utility {
 
-std::shared_ptr<spdlog::logger>& Logger::get() {
+API std::shared_ptr<spdlog::logger>& Logger::get() {
     static auto logger = create_default_logger();
     return logger;
 }
 
-void Logger::set_level(spdlog::level::level_enum level) {
+API void Logger::set_level(spdlog::level::level_enum level) {
     get()->set_level(level);
 }
 
-void Logger::set_level(const std::string& level) {
+API void Logger::set_level(const std::string& level) {
     auto log_level = spdlog::level::from_str(level);
     get()->set_level(log_level);
 }
 
-void Logger::enable_file_logging(
+API void Logger::enable_file_logging(
     const std::string& file_path,
     std::size_t max_size,
     std::size_t max_files
@@ -43,11 +44,11 @@ void Logger::enable_file_logging(
     }
 }
 
-void Logger::flush() {
+API void Logger::flush() {
     get()->flush();
 }
 
-void Logger::flush_on(spdlog::level::level_enum level) {
+API void Logger::flush_on(spdlog::level::level_enum level) {
     get()->flush_on(level);
 }
 
