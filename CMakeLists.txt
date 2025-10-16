@@ -24,6 +24,19 @@ endif()
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+# Use FetchContent to get spdlog
+include(FetchContent)
+FetchContent_Declare(
+  spdlog
+  GIT_REPOSITORY https://github.com/gabime/spdlog.git
+  GIT_TAG v1.14.1
+)
+
+# Configure spdlog options before making it available
+set(SPDLOG_BUILD_PIC ON CACHE BOOL "" FORCE)
+set(SPDLOG_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(spdlog)
+
 # Set C standard to C11
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED True)
@@ -79,14 +92,22 @@ add_library(
     ${PROJECT_SOURCE}
 )
 
-include_directories(${PROJECT_SOURCE_DIR}/include)
-include_directories(${PROJECT_SOURCE_DIR}/src)
+target_include_directories(${PROJECT_NAME}
+    PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+    PRIVATE
+    ${PROJECT_SOURCE_DIR}/src
+)
 
 if(WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE libusb-1.0)
 elseif(UNIX)
     target_link_libraries(${PROJECT_NAME} PRIVATE usb-1.0)
 endif()
+
+# Link spdlog library
+target_link_libraries(${PROJECT_NAME} PUBLIC spdlog::spdlog)
 
 # Enable LTO optimization
 set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -151,4 +172,39 @@ if(UNIX AND NOT APPLE)
     set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
 
     include(CPack)
+endif()
+
+# Option to enable tests
+option(BUILD_TESTS "Build tests" OFF)
+
+if(BUILD_TESTS)
+    # Enable CTest
+    include(CTest)
+    # Use FetchContent to get GoogleTest
+    include(FetchContent)
+    FetchContent_Declare(
+        googletest
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG v1.17.0
+    )
+
+    # For Windows: Prevent overriding the parent project's compiler/linker settings
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+
+    # Add test directory for all test files
+    file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS
+        ${PROJECT_SOURCE_DIR}/test/*.cpp
+    )
+
+    foreach(test_source ${TEST_SOURCES})
+        get_filename_component(test_name ${test_source} NAME_WE)
+        add_executable(${test_name} ${test_source})
+        target_link_libraries(${test_name} PRIVATE wujihandcpp GTest::gtest_main)
+        add_test(NAME ${test_name} COMMAND ${test_name})
+    endforeach()
+
+    message(STATUS "Tests enabled")
+else()
+    message(STATUS "Tests disabled")
 endif()

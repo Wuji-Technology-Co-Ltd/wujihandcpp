@@ -4,9 +4,10 @@
 
 #include <libusb.h>
 
+#include <wujihandcpp/utility/logger.hpp>
+
 #include "driver/driver.hpp"
 #include "utility/cross_os.hpp"
-#include "utility/logging.hpp"
 #include "utility/ring_buffer.hpp"
 
 namespace wujihandcpp::driver {
@@ -65,23 +66,22 @@ public:
                 ret = libusb_handle_events(driver_.libusb_context_);
             }
             if (ret != 0) {
-                LOG_ERROR(
+                WUJI_ERROR(
                     "Fatal error during TransmitBuffer destruction: The function "
-                    "libusb_handle_events returned an exception value: %d, which means we "
-                    "cannot release all memory allocated for transfers.",
-                    ret);
+                    "libusb_handle_events returned an exception value: {}, which means we "
+                    "cannot release all memory allocated for transfers.", static_cast<int>(ret));
             } else if (std::chrono::steady_clock::now() - start > std::chrono::seconds(1)) {
-                LOG_ERROR(
+                WUJI_ERROR(
                     "Fatal error during TransmitBuffer destruction: The usb transmit complete "
                     "callback was not called for all transfers, which means we cannot release "
                     "all memory allocated for transfers.");
             } else
                 continue;
 
-            LOG_ERROR(
+            WUJI_ERROR(
                 "The destructor will exit normally, but the unrecoverable memory leak "
                 "has already occurred. This may be a problem caused by libusb.");
-            LOG_ERROR("Number of leaked transfers: %zu", unreleased_transfer_count);
+            WUJI_ERROR("Number of leaked transfers: {}", static_cast<size_t>(unreleased_transfer_count));
             break;
         }
     }
@@ -102,7 +102,7 @@ public:
             auto front = free_transfers_.front();
             if (!front) [[unlikely]] {
                 if (!transfers_all_busy_)
-                    LOG_ERROR("Failed to fetch free buffer: All transfers are busy!");
+                    WUJI_ERROR("Failed to fetch free buffer: All transfers are busy!");
                 transfers_all_busy_ = true;
                 return nullptr;
             } else
@@ -149,10 +149,10 @@ private:
         int ret = libusb_submit_transfer(transfer);
         if (ret != 0) [[unlikely]] {
             if (ret == LIBUSB_ERROR_NO_DEVICE)
-                LOG_ERROR(
+                WUJI_ERROR(
                     "Failed to submit transmit transfer: Device disconnected. Terminating...");
             else
-                LOG_ERROR("Failed to submit transmit transfer: %d. Terminating...", ret);
+                WUJI_ERROR("Failed to submit transmit transfer: {}. Terminating...", static_cast<int>(ret));
             std::terminate();
         }
 
@@ -161,27 +161,27 @@ private:
 
     void usb_transmit_complete_callback(libusb_transfer* transfer) {
         if (transfer->status != LIBUSB_TRANSFER_COMPLETED) [[unlikely]] {
-            LOG_ERROR(
-                "USB transmitting error: Transfer not completed! status=%d", transfer->status);
+            WUJI_ERROR(
+                "USB transmitting error: Transfer not completed! status={}", static_cast<int>(transfer->status));
         }
 
         if (transfer->actual_length != transfer->length) [[unlikely]]
-            LOG_ERROR(
-                "USB transmitting error: transmitted(%d) < expected(%d)", transfer->actual_length,
-                transfer->length);
+            WUJI_ERROR(
+                "USB transmitting error: transmitted({}) < expected({})",
+                static_cast<int>(transfer->actual_length), static_cast<int>(transfer->length));
 
         transfer->length = prefill_size_;
 
         static_cast<Device&>(driver_).transmit_transfer_completed_callback(transfer);
 
         if (!free_transfers_.push_back(transfer)) [[unlikely]] {
-            LOG_ERROR(
+            WUJI_ERROR(
                 "Error while attempting to recycle transmit transfer into the ring queue: "
                 "The ring queue is full.");
-            LOG_ERROR(
+            WUJI_ERROR(
                 "This situation should theoretically be impossible. Its occurrence typically "
                 "indicates an issue with multithreaded synchronization in the code.");
-            LOG_ERROR(
+            WUJI_ERROR(
                 "Although this problem is not fatal, termination is triggered to ensure the "
                 "issue is promptly identified.");
             std::terminate();

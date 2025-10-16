@@ -9,9 +9,10 @@
 
 #include <libusb.h>
 
+#include <wujihandcpp/utility/logger.hpp>
+
 #include "utility/cross_os.hpp"
 #include "utility/final_action.hpp"
-#include "utility/logging.hpp"
 
 namespace wujihandcpp::driver {
 
@@ -46,9 +47,10 @@ public:
             libusb_device_handle_, out_endpoint_, libusb_data, length, &actual_length, 500);
         if (ret != 0) [[unlikely]] {
             if (ret == LIBUSB_ERROR_NO_DEVICE)
-                LOG_ERROR("Failed to submit transmit transfer: Device disconnected.");
+                WUJI_ERROR("Failed to submit transmit transfer: Device disconnected.");
             else
-                LOG_ERROR("Failed to submit transmit transfer: %d (%s).", ret, libusb_errname(ret));
+                WUJI_ERROR("Failed to submit transmit transfer: {} ({}).",
+                    static_cast<int>(ret), libusb_errname(ret));
         }
 
         return actual_length;
@@ -72,7 +74,7 @@ private:
 
         ret = libusb_init(&libusb_context_);
         if (ret != 0) [[unlikely]] {
-            LOG_ERROR("Failed to init libusb: %d (%s)", ret, libusb_errname(ret));
+            WUJI_ERROR("Failed to init libusb: {} ({})", static_cast<int>(ret), libusb_errname(ret));
             return false;
         }
         utility::FinalAction exit_libusb{[this]() { libusb_exit(libusb_context_); }};
@@ -84,14 +86,14 @@ private:
         if constexpr (utility::is_linux()) {
             ret = libusb_detach_kernel_driver(libusb_device_handle_, target_interface_);
             if (ret != LIBUSB_ERROR_NOT_FOUND && ret != 0) [[unlikely]] {
-                LOG_ERROR("Failed to detach kernel driver: %d (%s)", ret, libusb_errname(ret));
+                WUJI_ERROR("Failed to detach kernel driver: {} ({})", static_cast<int>(ret), libusb_errname(ret));
                 return false;
             }
         }
 
         ret = libusb_claim_interface(libusb_device_handle_, target_interface_);
         if (ret != 0) [[unlikely]] {
-            LOG_ERROR("Failed to claim interface: %d (%s)", ret, libusb_errname(ret));
+            WUJI_ERROR("Failed to claim interface: {} ({})", static_cast<int>(ret), libusb_errname(ret));
             return false;
         }
         utility::FinalAction release_interface{
@@ -99,7 +101,7 @@ private:
 
         libusb_receive_transfer_ = libusb_alloc_transfer(0);
         if (!libusb_receive_transfer_) [[unlikely]] {
-            LOG_ERROR("Failed to alloc receive transfer");
+            WUJI_ERROR("Failed to alloc receive transfer");
             return false;
         }
 
@@ -112,7 +114,7 @@ private:
             this, 0);
         ret = libusb_submit_transfer(libusb_receive_transfer_);
         if (ret != 0) [[unlikely]] {
-            LOG_ERROR("Failed to submit receive transfer: %d (%s)", ret, libusb_errname(ret));
+            WUJI_ERROR("Failed to submit receive transfer: {} ({})", static_cast<int>(ret), libusb_errname(ret));
             return false;
         }
 
@@ -127,8 +129,8 @@ private:
         libusb_device** device_list = nullptr;
         const ssize_t device_count = libusb_get_device_list(libusb_context_, &device_list);
         if (device_count < 0) {
-            LOG_ERROR(
-                "Failed to get device list: %zd (%s)", device_count,
+            WUJI_ERROR(
+                "Failed to get device list: {} ({})", static_cast<int>(device_count),
                 libusb_errname(static_cast<int>(device_count)));
             return false;
         }
@@ -145,7 +147,7 @@ private:
         for (ssize_t i = 0; i < device_count; i++) {
             int ret = libusb_get_device_descriptor(device_list[i], &device_descriptors[i]);
             if (ret != 0 || device_descriptors[i].bLength == 0) {
-                LOG_WARN("A device descriptor failed to get: %d (%s)", ret, libusb_errname(ret));
+                WUJI_WARN("A device descriptor failed to get: {} ({})", ret, libusb_errname(ret));
                 continue;
             }
             auto& descriptors = device_descriptors[i];
@@ -183,18 +185,16 @@ private:
             for (auto& device : devices_opened)
                 libusb_close(device);
 
-            std::fprintf(stderr, "[ERROR] ");
-            if (devices_opened.size())
-                std::fprintf(stderr, "%zu devices ", devices_opened.size());
-            else
-                std::fprintf(stderr, "No device ");
-            std::fprintf(stderr, "found with specified vendor id (0x%04x)", vendor_id);
+            if (devices_opened.size()) {
+                WUJI_ERROR("{} devices found with specified vendor id (0x{:04x})", devices_opened.size(), vendor_id);
+            } else {
+                WUJI_ERROR("No device found with specified vendor id (0x{:04x})", vendor_id);
+            }
 
             if (product_id >= 0)
-                std::fprintf(stderr, ", product id (0x%04x)", product_id);
+                WUJI_ERROR("  Product id: 0x{:04x}", product_id);
             if (serial_number)
-                std::fprintf(stderr, ", serial number (%s)", serial_number);
-            std::fprintf(stderr, "\n");
+                WUJI_ERROR("  Serial number: {}", serial_number);
 
             int relaxing_count = print_matched_unmatched_devices(
                 device_list, device_count, device_descriptors, vendor_id, product_id,
@@ -202,15 +202,15 @@ private:
 
             if (devices_opened.size()) {
                 if (!serial_number)
-                    LOG_ERROR(
+                    WUJI_ERROR(
                         "To ensure correct device selection, please specify the Serial Number");
                 else
-                    LOG_ERROR(
+                    WUJI_ERROR(
                         "Multiple devices found, which is unusual. Consider using a device "
                         "with a unique Serial Number");
             } else {
                 if (relaxing_count)
-                    LOG_ERROR("Consider relaxing some filters");
+                    WUJI_ERROR("Consider relaxing some filters");
             }
 
             return false;
@@ -285,12 +285,12 @@ private:
         int ret = libusb_submit_transfer(transfer);
         if (ret != 0) [[unlikely]] {
             if (ret == LIBUSB_ERROR_NO_DEVICE)
-                LOG_ERROR(
+                WUJI_ERROR(
                     "Failed to re-submit receive transfer: Device disconnected. "
                     "Terminating...");
             else
-                LOG_ERROR(
-                    "Failed to re-submit receive transfer: %d (%s). Terminating...", ret,
+                WUJI_ERROR(
+                    "Failed to re-submit receive transfer: {} ({}). Terminating...", ret,
                     libusb_errname(ret));
             std::terminate();
         }
