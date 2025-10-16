@@ -23,7 +23,7 @@ concept is_legal_transfer_prefill =
 template <typename Device>
 class Driver {
 public:
-    template <is_legal_transfer_prefill TransferPrefill = void>
+    template <typename TransferPrefill = void>
     class AsyncTransmitBuffer;
 
     explicit Driver(uint16_t usb_vid, int32_t usb_pid, const char* serial_number) {
@@ -35,7 +35,8 @@ public:
     ~Driver() {
         libusb_free_transfer(libusb_receive_transfer_);
         libusb_release_interface(libusb_device_handle_, target_interface_);
-        libusb_attach_kernel_driver(libusb_device_handle_, 0);
+        if constexpr (utility::is_linux())
+            libusb_attach_kernel_driver(libusb_device_handle_, 0);
         libusb_close(libusb_device_handle_);
         libusb_exit(libusb_context_);
     }

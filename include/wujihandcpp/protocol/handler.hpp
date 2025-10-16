@@ -6,6 +6,9 @@
 
 #include <type_traits>
 
+#include "wujihandcpp/device/controller.hpp"
+#include "wujihandcpp/utility/api.hpp"
+
 namespace wujihandcpp {
 namespace protocol {
 
@@ -31,12 +34,12 @@ public:
         enum class Size : uint32_t { _1, _2, _4, _8 } size : 2;
         enum Policy : uint32_t {
             NONE = 0,
-            POSITION_FLOATING = 0x01,
-            POSITION_REVERSED = 0x02,
-            VELOCITY_FLOATING = 0x04,
-            VELOCITY_REVERSED = 0x08,
-            CURRENT_FLOATING = 0x10,
-            CURRENT_REVERSED = 0x20,
+            MASKED = 1ul << 0,
+            CONTROL_WORD = 1ul << 1,
+            POSITION = 1ul << 2,
+            POSITION_REVERSED = 1ul << 3,
+            VELOCITY = 1ul << 4,
+            VELOCITY_REVERSED = 1ul << 5,
         };
         uint32_t policy : 30;
     };
@@ -66,37 +69,37 @@ public:
         static_assert(sizeof(void*) == 8, "");
     };
 
-    explicit Handler(
+    WUJIHANDCPP_API explicit Handler(
         uint16_t usb_vid, int32_t usb_pid, const char* serial_number, size_t buffer_transfer_count,
         size_t storage_unit_count);
 
-    ~Handler();
+    WUJIHANDCPP_API ~Handler();
 
-    void init_storage_info(int storage_id, StorageInfo info);
+    WUJIHANDCPP_API void init_storage_info(int storage_id, StorageInfo info);
 
-    void read_async_unchecked(int storage_id);
+    WUJIHANDCPP_API void read_async_unchecked(int storage_id);
 
-    void read_async(
+    WUJIHANDCPP_API void read_async(
         int storage_id, void (*callback)(Buffer8 context, Buffer8 value), Buffer8 callback_context);
 
-    void write_async_unchecked(Buffer8 data, int storage_id);
+    WUJIHANDCPP_API void write_async_unchecked(Buffer8 data, int storage_id);
 
-    void write_async(
+    WUJIHANDCPP_API void write_async(
         Buffer8 data, int storage_id, void (*callback)(Buffer8 context, Buffer8 value),
         Buffer8 callback_context);
 
-    void pdo_write_async_unchecked(const double (&control_positions)[5][4], uint32_t timestamp);
+    WUJIHANDCPP_API void
+        attach_realtime_controller(device::IRealtimeController* controller, bool enable_upstream);
 
-    bool trigger_transmission();
+    WUJIHANDCPP_API device::IRealtimeController* detach_realtime_controller();
 
-    Buffer8 get(int storage_id);
+    WUJIHANDCPP_API Buffer8 get(int storage_id);
 
-    void disable_thread_safe_check();
+    WUJIHANDCPP_API void disable_thread_safe_check();
 
 private:
     class Impl;
-    static constexpr size_t impl_align = 8;
-    alignas(impl_align) uint8_t impl_[760];
+    Impl* impl_;
 };
 
 } // namespace protocol
