@@ -41,6 +41,13 @@ public:
         libusb_exit(libusb_context_);
     }
 
+    /**
+     * @brief Transmits a buffer to the device over the configured bulk OUT endpoint.
+     *
+     * @param data Pointer to the bytes to transmit.
+     * @param length Number of bytes to transmit from `data`.
+     * @return int Number of bytes actually transmitted, or -1 if the transfer could not be submitted.
+     */
     int usb_transmit(const std::byte* data, int length) {
         int actual_length = -1;
         auto libusb_data = reinterpret_cast<unsigned char*>(const_cast<std::byte*>(data));
@@ -70,6 +77,20 @@ public:
     }
 
 private:
+    /**
+     * @brief Initializes libusb, selects and opens the target USB device, claims its interface,
+     *        and allocates/submits the receive transfer used by the driver.
+     *
+     * Attempts to locate and open a device matching the provided vendor_id and (optionally)
+     * product_id and serial_number, detaches the kernel driver on Linux if present, claims the
+     * interface, allocates a receive transfer, and submits it so the driver can start receiving data.
+     *
+     * @param vendor_id USB vendor ID to match.
+     * @param product_id USB product ID to match; use a negative value to ignore product ID.
+     * @param serial_number Optional ASCII serial number to match; pass nullptr to ignore serial number.
+     * @return true if the device was opened, interface claimed, and receive transfer successfully submitted;
+     *         `false` on any failure.
+     */
     bool init(uint16_t vendor_id, int32_t product_id, const char* serial_number) noexcept {
         int ret;
 
@@ -126,6 +147,17 @@ private:
         return true;
     }
 
+    /**
+     * @brief Selects and opens a single USB device matching the given filters and stores its handle.
+     *
+     * Attempts to locate USB devices matching vendor_id and, if provided, product_id and serial_number.
+     * If exactly one matching device is found and opened, its libusb handle is assigned to libusb_device_handle_.
+     *
+     * @param vendor_id USB vendor ID to match.
+     * @param product_id USB product ID to match; pass a negative value to ignore this filter.
+     * @param serial_number ASCII serial number to match; pass nullptr to ignore this filter.
+     * @return true if exactly one matching device was opened and stored, false otherwise.
+     */
     bool select_device(uint16_t vendor_id, int32_t product_id, const char* serial_number) {
         libusb_device** device_list = nullptr;
         const ssize_t device_count = libusb_get_device_list(libusb_context_, &device_list);
@@ -275,6 +307,16 @@ private:
         return j;
     }
 
+    /**
+     * @brief Handle a completed libusb receive transfer and queue it for further reception.
+     *
+     * If event handling is disabled, marks the driver's receive transfer as not busy and returns.
+     * Otherwise, invokes the device's receive_transfer_completed_callback with the completed transfer
+     * and attempts to re-submit the transfer for continued receiving; on re-submission failure the
+     * function logs an error and terminates the process.
+     *
+     * @param transfer Pointer to the completed libusb transfer.
+     */
     void usb_receive_complete_callback(libusb_transfer* transfer) {
         if (!handling_events_.load(std::memory_order::relaxed)) [[unlikely]] {
             receive_transfer_busy_ = false;

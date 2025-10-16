@@ -46,6 +46,13 @@ public:
             alloc_transfer_count_);
     }
 
+    /**
+     * @brief Releases all allocated libusb transfer resources and ensures outstanding transfers complete.
+     *
+     * Attempts to free every pre-allocated transfer, waiting briefly for outstanding asynchronous
+     * callbacks to return transfers to the free pool. If transfers cannot be reclaimed within
+     * a short timeout, logs fatal errors describing the failure and the remaining leaked transfer count.
+     */
     ~AsyncTransmitBuffer() {
         size_t unreleased_transfer_count = alloc_transfer_count_;
         timeval timeout{1, 0};
@@ -99,7 +106,16 @@ public:
         { f(free_size, transfer) } -> std::convertible_to<bool>;
     } && requires(const F2& f, int free_size) {
         { f(free_size) } -> std::convertible_to<int>;
-    } std::byte* try_fetch_buffer(const F1& check_transfer, const F2& get_actual_size) {
+    } /**
+     * Acquire a writable buffer region from a preallocated transmit transfer that meets the provided acceptance predicate.
+     *
+     * @tparam F1 Type of the acceptance predicate callable.
+     * @tparam F2 Type of the size selection callable.
+     * @param check_transfer Callable invoked as `check_transfer(free_size, transfer)` to decide whether the current transfer is acceptable; should return `true` to accept the transfer, `false` to reject it (causes the buffer to be considered for submission).
+     * @param get_actual_size Callable invoked as `get_actual_size(free_size)` to determine how many bytes to reserve from the accepted transfer's remaining free space; its return value must be <= `free_size`.
+     * @return std::byte* Pointer to the start of the reserved buffer region within the transfer when successful, or `nullptr` if no suitable buffer is available.
+     */
+    std::byte* try_fetch_buffer(const F1& check_transfer, const F2& get_actual_size) {
         while (true) {
             auto front = free_transfers_.front();
             if (!front) [[unlikely]] {
@@ -136,6 +152,17 @@ public:
     }
 
 private:
+    /**
+     * @brief Attempts to submit a prepared transfer from the free pool to libusb.
+     *
+     * Pops a pre-allocated transmit transfer from the internal free pool, invokes the device
+     * hook before submission, and submits the transfer to libusb for transmission.
+     *
+     * @returns true if a transfer was popped and successfully submitted, false if no free transfer was available.
+     *
+     * @note Calls Device::before_submitting_transmit_transfer(transfer) prior to submission.
+     * @note If libusb_submit_transfer fails the function logs an error and terminates the process via std::terminate().
+     */
     bool trigger_transmission_nocheck() {
         libusb_transfer* transfer = nullptr;
 
@@ -161,6 +188,17 @@ private:
         return true;
     }
 
+    /**
+     * @brief Handle a completed asynchronous USB transmit transfer and recycle it.
+     *
+     * Resets the transfer's length to the configured prefill size, invokes the device's
+     * transmit completion callback, and attempts to push the transfer back into the free
+     * pool. Logs errors when the transfer status is not completed or when the actual
+     * transmitted length differs from the expected length. If recycling into the pool
+     * fails, the process is terminated.
+     *
+     * @param transfer Pointer to the completed libusb_transfer.
+     */
     void usb_transmit_complete_callback(libusb_transfer* transfer) {
         if (transfer->status != LIBUSB_TRANSFER_COMPLETED) [[unlikely]] {
             WUJI_ERROR(
