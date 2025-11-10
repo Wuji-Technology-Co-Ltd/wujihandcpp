@@ -1,73 +1,80 @@
+# Repository Deprecated
+
+This repository is deprecated and no longer maintained. Its contents have been merged into the [WujihandPy](https://github.com/Wuji-Technology-Co-Ltd/wujihandpy) repository as a subtree. Please use and contribute to WujihandPy for all development, issues, and pull requests:
+
+- [https://github.com/Wuji-Technology-Co-Ltd/wujihandpy](https://github.com/Wuji-Technology-Co-Ltd/wujihandpy)
+
+This repository is retained as read-only for historical reference.
+
 # WujihandCpp: A Lightweight C++ SDK for Wujihand
 
-这是一个使用 C++ **全新编写的** 舞肌灵巧手 SDK (Software Development Kit)。
+This is a C++ SDK for the Wujihand dexterous hand, newly implemented from scratch.
 
-提供更简洁、更高效、更易用的接口与灵巧手设备进行交互。
+It provides simpler, more efficient, and more user‑friendly interfaces to interact with the dexterous hand device.
 
-Python 版本 [WujihandPy](https://github.com/Wuji-Technology-Co-Ltd/wujihandpy)（基于 pybind11 绑定），已发布至 PyPI，可通过 pip 安装。
+The Python version, [WujihandPy](https://github.com/Wuji-Technology-Co-Ltd/wujihandpy) (based on pybind11 bindings), is published on PyPI and can be installed via pip.
 
-## 最低系统要求 (Linux)
+## Minimum System Requirements (Linux)
 
-最低系统要求仅适用于在本地使用 SDK 发布包的情况。
-发布包头文件仅依赖 C++11，且在尽量旧的 glibc 版本下构建，可保证低版本发行版和编译器的兼容性。
+The minimum requirements apply only when using the SDK release packages locally. The release headers depend only on C++11, and the binaries are built against an older glibc to ensure compatibility with older distributions and compilers.
 
-若通过 Docker 进行开发，可在任意 Linux 发行版上使用，无需关注系统版本。
+If you develop with Docker, you can use any Linux distribution without concern for the system version.
 
-若通过源码编译安装，则必须使用完整支持 C++20 的编译器（GCC 13+/Clang 17+）进行构建。
+If building from source, you must use a compiler with full C++20 support (GCC 13+ / Clang 17+).
 
 ### glibc 2.28+
 
-使用 glibc 2.28 或更高版本的 Linux 发行版：
+Use a Linux distribution with glibc 2.28 or newer:
 - Debian 10+
 - Ubuntu 18.10+
 - Fedora 29+
 - CentOS/RHEL 8+
 
-### C++11 编译工具链
+### C++11 Toolchain
 
-支持 C++11 或更高版本的 C++ 编译器：
+Use a C++ compiler that supports C++11 or later:
 - GCC 5+
 - Clang 4+
 <!-- - MSVC 2015+ -->
 
 ### libusb 1.0
 
-需安装 libusb 1.0 开发包：
+Install the libusb 1.0 development package:
 
 - Debian/Ubuntu: `sudo apt install libusb-1.0-0-dev`
 - Fedora/CentOS/RHEL: `sudo dnf install libusbx-devel`
 
-## 最低系统要求 (Windows)
+## Minimum System Requirements (Windows)
 
-WujihandCpp 目前暂不支持 Windows，我们会尽快推进相关支持。
+WujihandCpp currently does not support Windows. We plan to add support in the near future.
 
-## 安装
+## Installation
 
-### Docker (推荐)
+### Docker (Recommended)
 
-我们提供了一个基于 Ubuntu 24.04 & GCC-14 的 Docker 镜像，内置了所有必要的依赖和编译工具链，见 [Docker 开发指南](docs/zh-cn/docker-develop-guide.md)。
+We provide a Docker image based on Ubuntu 24.04 and GCC 14 with all required dependencies and toolchains preinstalled. See the [Docker Development Guide](docs/zh-cn/docker-develop-guide.md).
 
-SDK 已在镜像中全局安装，可直接在容器内进行开发。
+The SDK is preinstalled globally in the image, so you can develop directly inside the container.
 
-Ubuntu 24 拥有较新的 glibc，GCC-14 支持完整的 C++20 特性，两者组合可确保 SDK 的最佳优化和使用体验。
+Ubuntu 24 includes a recent glibc, and GCC 14 provides full C++20 support; together they ensure optimal performance and an excellent development experience.
 
-### SDK 发布包​​
+### SDK Release Packages
 
-如果不希望使用 Docker，也可通过 [Release 页面](https://github.com/Wuji-Technology-Co-Ltd/wujihandcpp/releases) 的发布包​​进行安装。
+If you prefer not to use Docker, you can install from the release packages available on the [Releases page](https://github.com/Wuji-Technology-Co-Ltd/wujihandcpp/releases).
 
 - Debian/Ubuntu: `sudo apt install ./wujihandcpp-<version>-<arch>.deb`
 
 - Fedora/CentOS/RHEL: `sudo dnf install ./wujihandcpp-<version>-<arch>.rpm`
 
-- 其他发行版：可由 `wujihandcpp-<version>-<arch>.zip` 手动安装头文件和库文件。
+- Other distributions: manually install headers and libraries from `wujihandcpp-<version>-<arch>.zip`.
 
-### 从源码构建
+### Build from Source
 
-见 (TODO)。
+See (TODO).
 
-## 使用
+## Usage
 
-链接 wujihandcpp 库即可。
+Link against the `wujihandcpp` library.
 
 ### CMake
 
@@ -86,97 +93,96 @@ target_link_libraries(<your_target> PRIVATE wujihandcpp)
 LDFLAGS += -lwujihandcpp
 ```
 
-可在 `example` 目录中查看使用示例。
+See the `example` directory for usage examples.
 
-## 部分参考 API
+## Selected API Reference
 
-### 引入头文件
+### Include headers
 
 ```cpp
 #include <wujihandcpp/data/data.hpp>   // For data types
 #include <wujihandcpp/device/hand.hpp> // For hand device
 ```
 
-### 连接至灵巧手
+### Connect to the hand
 
 ```cpp
 wujihandcpp::device::Hand hand{usb_vid, usb_pid};
 ```
 
-定义一个 `Hand` 对象，并传入其 USB VID 和 PID 即可连接。
+Instantiate a `Hand` object with the USB VID and PID to establish a connection.
 
-在目前的固件实现中，所有灵巧手的 VID 固定为 `0x0483`，PID 固定为 `0x7530`：
+In the current firmware, all hands use a fixed VID/PID: VID `0x0483`, PID `0x7530`:
 
 ```cpp
 wujihandcpp::device::Hand hand{0x0483, 0x7530};
 ```
 
-### 读数据
+### Read data
 
 ```cpp
 read<typename Data>() -> Data::ValueType;
 read<typename Data>() -> void; // For bulk-read
 ```
 
-所有可使用的数据类型均定义在 `wujihandcpp/data/data.hpp` 中。
+All available data types are defined in `wujihandcpp/data/data.hpp`.
 
-例如，读取灵巧手的上电运行时间(us)：
+For example, read the device uptime (µs):
 
 ```cpp
 uint32_t time = hand.read<wujihandcpp::data::hand::SystemTime>();
 ```
 
-除整手唯一的数据外，每个关节也有自己的数据，定义在 `data::joint` 命名空间下。
+In addition to data unique to the whole hand, each joint has its own data types under the `data::joint` namespace.
 
-例如，读取第1个手指（食指），第0个关节的当前位置数据：
+For example, read the current position of joint 0 of finger 1 (index finger):
 
 ```cpp
 int32_t position = hand.finger(1).joint(0).read<wujihandcpp::data::joint::Position>();
 ```
 
-用一条指令读取多个数据也是可行的，这被称为**批量读 (Bulk-Read)**。
+Reading multiple items in a single command is also supported (bulk read).
 
-例如，以下指令读取整手所有（20个）关节的当前位置数据：
+For example, the following reads the current position of all 20 joints of the hand:
 
 ```cpp
 hand.read<wujihandcpp::data::joint::Position>();
 ```
 
-由于一次性获取了多个数据，为避免不必要的开销，当进行批量读时，`read` 函数的返回值为 `void`。
+Because multiple items are fetched at once, to avoid unnecessary overhead, `read` returns `void` for bulk reads.
 
-此时若希望获取读取完成的数据，需在 `read` 后调用 `get` 函数：
+To retrieve the results after a bulk read, call `get`:
 
 ```cpp
 hand.finger(i).joint(j).get<wujihandcpp::data::joint::Position>();
 ```
 
-`read` 函数会阻塞，直到读取完成。保证当函数返回时，读取一定成功。
+`read` blocks until completion and guarantees success upon return.
 
-不同于 `read` 函数，`get` 从不阻塞，它总是立即返回最后一次读取的数据。
-若从未请求过数据，`get` 函数的返回值是未定义的。
+Unlike `read`, `get` never blocks; it immediately returns the most recently read data. If no prior read has been requested, the return value is undefined.
 
-### 写数据
+### Write data
 
-写数据拥有类似的API，但多了一个参数用于传递目标值：
+Writing uses a similar API with an extra parameter for the target value:
 
 ```cpp
 write<typename Data>(Data::ValueType value) -> void;
 ```
 
-例如，写入单个关节的目标位置数据：
+For example, write the target position of a single joint:
 
 ```cpp
 hand.finger(1).joint(0).write<wujihandcpp::data::joint::ControlPosition>(0x8FFFFF);
 ```
 
-**批量写**数据也是可行的，例如，批量写入第1个手指的目标位置数据：
+Bulk writes are also supported. For example, write the target positions for finger 1:
 
 ```cpp
 hand.finger(1).write<wujihandcpp::data::joint::ControlPosition>(0x8FFFFF);
 ```
 
-`write` 函数会阻塞，直到写入完成。保证当函数返回时，写入一定成功。
+`write` blocks until completion and guarantees success upon return.
 
-## 许可证
+## License
 
-本项目采用 MIT 许可证，详情见 [LICENSE](LICENSE) 文件。
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
